@@ -1,0 +1,76 @@
+{
+    "name": "patients on arv aggregate report",
+    "version": "1.0",
+    "tag": "patients, arv",
+    "description": "patients on arv disaggregated by gender, age",
+    "uses": [
+        {
+            "name": "on_art_disaggregation",
+            "version": "1.0",
+            "type": "dataset_def"
+        }
+    ],
+    "sources": [
+        {
+            "dataset": "on_art_disaggregation",
+            "alias": "oad",
+            "forwarded_params": [
+                {
+                    "mapping": "@endDate:@endDate"
+                }
+            ]
+        }
+    ],
+    "params_metadata": {
+        "@endDate": {
+            "required": true,
+            "mysql_datatype": "date",
+            "default_value": "2017-12-31"
+        }
+    },
+    "columns": [
+        {
+            "type": "simple_column",
+            "column": "oad.gender"
+        },
+        {
+            "type": "simple_column",
+            "column": "oad.age_range"
+        },
+        {
+            "type": "derived_column",
+            "alias": "on_ctx_prophylaxis",
+            "expression_type": "simple_expression",
+            "expression_options": {
+                "expression": "count(oad.on_ctx_prophylaxis)"
+            }
+        },
+        {
+            "type": "derived_column",
+            "alias": "active_on_art",
+            "expression_type": "simple_expression",
+            "expression_options": {
+                "expression": "count(oad.active_on_art)"
+            }
+        }
+    ],
+    "group_by": {
+        "columns": [ "gender", "age_range"]
+    },
+    "dynamic_json_query_generation_directives":[
+        {
+            "generated_query_name":"patient_list",
+            "generating_js_module_name": "hiv_patient_list_generator",
+            "generating_directives": {
+                "use_template": "patient_list_template",
+                "use_template_version": "1.0",
+                "join_directives": {
+                        "join_type": "INNER",
+                        "join_condition": "<<base_column>> = <<patient_list_template_column>>",
+                        "base_column": "person_id",
+                        "template_column": "patient_id"
+                }
+            }
+        }
+    ]
+}

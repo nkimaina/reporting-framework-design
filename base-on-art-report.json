@@ -1,0 +1,95 @@
+{
+  "name": "on_art_disaggregation",
+  "version": "1.0",
+  "tag": "on_art",
+  "description": "Patient on art disaggregated by age",
+  "sources": [
+    {
+      "table": "etl.hiv_monthly_report_dataset",
+      "alias": "hmrd"
+    }
+  ],
+  "coumns": [
+    {
+      "type": "simple_column",
+      "alias": "gender",
+      "column": "hmrd.gender"
+    },
+    {
+      "type": "derived_column",
+      "alias": "age_range",
+      "expression_type": "case_statement",
+      "expression_options": {
+        "case_options": [
+          {
+            "condition": "hmrd.age between 0 and 1",
+            "value": "0_to_1"
+          },
+          {
+            "condition": "hmrd.age between 1 and 9",
+            "value": "1_to_9"
+          },
+          {
+            "condition": "hmrd.age between 10 and 14",
+            "value": "10_to_14"
+          },
+          {
+            "condition": "hmrd.age between 15 and 19",
+            "value": "15_to_19"
+          },
+          {
+            "condition": "hmrd.age between 20 and 24",
+            "value": "20_to_24"
+          },
+          {
+            "condition": "else",
+            "value": "older_than_24"
+          }
+        ]
+      }
+    },
+    {
+      "type": "derived_column",
+      "alias": "on_ctx_prophylaxis",
+      "expression_type": "case_statement",
+      "expression_options": {
+        "case_options": [
+          {
+            "condition": "hmrd.status='active' and hmrd.on_pcp_prophylaxis_this_month=1",
+            "value": "1"
+          },
+          {
+            "condition": "else",
+            "value": "null"
+          }
+        ]
+      }
+    },
+    {
+      "type": "derived_column",
+      "alias": "active_on_art",
+      "expression_type": "case_statement",
+      "expression_options": {
+        "case_options": [
+          {
+            "condition": "hmrd.status='active' and hmrd.on_art_this_month=1",
+            "value": "1"
+          },
+          {
+            "condition": "else",
+            "value": "null"
+          }
+        ]
+      }
+    }
+  ],
+  "filters": {
+    "condition_join_operator": "AND",
+    "conditions": [
+      {
+        "filter_acting_on": "simple_column",
+        "condion_expression": "endDate = <<@endDate>>"
+      }
+    ]
+  }
+}

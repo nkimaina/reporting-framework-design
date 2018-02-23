@@ -1,0 +1,161 @@
+{
+    "name": "dynamic_on_art_disaggregation",
+    "version": "1.0",
+    "tag": "dynamic_on_art",
+    "description": "Patient on art disaggregated by age",
+    "sources": [
+        {
+            "table": "etl.hiv_monthly_report_dataset",
+            "alias": "hmrd"
+        },
+        {
+            "table": "amrs.person",
+            "alias": "t1",
+            "join": {
+                "type": "INNER",
+                "join_condition": "t1.person_id = hdr.person_id"
+            }
+        },
+        {
+            "table": "amrs.person_name",
+            "alias": "person_name",
+            "join": {
+                "type": "INNER",
+                "join_condition": "t1.person_id = person_name.person_id AND (person_name.voided IS NULL || person_name.voided = 0)"
+            }
+        },
+        {
+            "table": "amrs.patient_identifier",
+            "alias": "id",
+            "join": {
+                "type": "LEFT OUTER",
+                "join_condition": "t1.person_id = person_name.person_id AND (person_name.voided IS NULL || person_name.voided = 0)"
+            }
+        },
+        {
+            "table": "amrs.patient_identifier",
+            "alias": "id",
+            "join": {
+                "type": "INNER",
+                "join_condition": "t1.person_id = person_name.person_id AND (person_name.voided IS NULL || person_name.voided = 0)"
+            }
+        }
+    ],
+    "coumns": [
+        {
+            "type": "simple_column",
+            "alias": "person_id",
+            "column": "t1.person_id"
+        },
+        {
+            "type": "derived_column",
+            "alias": "person_name",
+            "expression_type": "simple_expression",
+            "expression_metadata": {
+                "expression": " CONCAT(COALESCE(person_name.given_name, ''), ' ', COALESCE(person_name.middle_name, ''), ' ', COALESCE(person_name.family_name, ''))"
+            }
+        },
+        {
+            "type": "derived_column",
+            "alias": "person_identifiers",
+            "expression_type": "simple_expression",
+            "expression_options": {
+                "expression": " GROUP_CONCAT(DISTINCT id.identifier SEPARATOR ', ')"
+            }
+        },
+        {
+            "type": "simple_column",
+            "alias": "gender",
+            "column": "hmrd.gender"
+        },
+        {
+            "type": "derived_column",
+            "alias": "age_range",
+            "expression_type": "case_statement",
+            "expression_options": {
+                "case_options": [
+                    {
+                        "condition": "hmrd.age between 0 and 1",
+                        "value": "0_to_1"
+                    },
+                    {
+                        "condition": "hmrd.age between 1 and 9",
+                        "value": "1_to_9"
+                    },
+                    {
+                        "condition": "hmrd.age between 10 and 14",
+                        "value": "10_to_14"
+                    },
+                    {
+                        "condition": "hmrd.age between 15 and 19",
+                        "value": "15_to_19"
+                    },
+                    {
+                        "condition": "hmrd.age between 20 and 24",
+                        "value": "20_to_24"
+                    },
+                    {
+                        "condition": "else",
+                        "value": "older_than_24"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "derived_column",
+            "alias": "on_ctx_prophylaxis",
+            "expression_type": "case_statement",
+            "expression_options": {
+                "case_options": [
+                    {
+                        "condition": "hmrd.status='active' and hmrd.on_pcp_prophylaxis_this_month=1",
+                        "value": "1"
+                    },
+                    {
+                        "condition": "else",
+                        "value": "null"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "derived_column",
+            "alias": "active_on_art",
+            "expression_type": "case_statement",
+            "expression_options": {
+                "case_options": [
+                    {
+                        "condition": "hmrd.status='active' and hmrd.on_art_this_month=1",
+                        "value": "1"
+                    },
+                    {
+                        "condition": "else",
+                        "value": "null"
+                    }
+                ]
+            }
+        }
+    ],
+    "filters": {
+        "condition_join_operator": "AND",
+        "conditions": [
+            {
+                "filter_acting_on": "simple_column",
+                "condition_expression": "endDate = <<@endDate>>"
+            },
+            {
+                "filter_acting_on": "simple_column",
+                "condition_expression": "gender = <<@dynamic_gender>>",
+                "dynamically_generated": true
+            },
+            {
+                "filter_acting_on": "derived_column",
+                "condition_expression": "<<@dynamic_age_range>> = (CASE WHEN age BETWEEN 0 AND 1 THEN '0_to_1' WHEN age BETWEEN 1 AND 9 THEN '1_to_9' WHEN age BETWEEN 10 AND 14 THEN '10_to_14' WHEN age BETWEEN 15 AND 19 THEN '15_to_19' WHEN age BETWEEN 20 AND 24 THEN '20_to_24' ELSE 'older_than_24' END)",
+                "dynamically_generated": true
+            }
+        ]
+    },
+    "group by":{
+        "columns":["t1.person_id"]
+    }
+}
